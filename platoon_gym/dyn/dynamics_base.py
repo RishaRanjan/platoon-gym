@@ -4,13 +4,27 @@ import numpy as np
 
 class DynamicsBase(ABC):
     """
-    Base dynamics class.
+    Base class for any dynamics model. All dynamics models should inherit from 
+    this class.
 
-    :param dt: discrete timestep
-    :param x_lims: shape (n, 2), minimum and maximum for each state
-    :param u_lims: shape (m, 2), minimum and maximum for each input
+    Attributes:
+        dt: float, discrete timestep
+        x_lims: np.ndarray, shape (n, 2), state limits
+        u_lims: np.ndarray, shape (m, 2), control limits
+        n: int, state dimension
+        m: int, input dimension
+        p: int, sensor dimension
     """
     def __init__(self, dt: float, x_lims: np.ndarray, u_lims: np.ndarray):
+        """
+        Base class initialization. All derived classes will have these 
+        parameters.
+
+        Parameters:
+            dt: float, discrete timestep
+            x_lims: np.ndarray, shape (n, 2), state limits
+            u_lims: np.ndarray, shape (m, 2), control limits
+        """
         self.dt = dt
         self.x_lims = x_lims
         self.u_lims = u_lims
@@ -24,20 +38,26 @@ class DynamicsBase(ABC):
         Forward dynamics functon. Returns the state at the next timestep when 
         starting at a current state and applying some input.
 
-        :param x: shape (n,), current state
-        :param u: shape (m,), input
-        :return: state of the vehicle at the next timestep
+        Args:
+            x: np.ndarray, shape (n,), current state
+            u: np.ndarray, shape (m,), input
+
+        Returns:
+            np.ndarray, shape (n,): state of the vehicle at the next timestep
         """
         pass
 
     @abstractmethod
     def sense(self, x: np.ndarray) -> np.ndarray:
         """
-        Sensing function. Returns an some function of the state that one may 
-        have access to due to some sensor.
+        Sensing function. Returns some function of the state that one may have 
+        access to due to some sensor.
 
-        :param x: shape (n,), current state
-        :return: shape (p,), sensor observation
+        Args:
+            x: shape (n,), current state
+
+        Returns:
+            np.ndarray, shape (p,): sensor observation
         """
         pass
     
@@ -45,7 +65,10 @@ class DynamicsBase(ABC):
         """
         Clips inputs to lie in u_lims.
         
-        :param u: input to clip
-        :return: shape (m,), clipped input
+        Args:
+            u: shape (m,), desired input
+
+        Returns:
+            np.ndarray, shape (m,): clipped input
         """
         return np.clip(u, self.u_lims[:, 0], self.u_lims[:, 1])

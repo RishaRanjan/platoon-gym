@@ -1,11 +1,12 @@
 import numpy as np
 
 from platoon_gym.dyn.utils import (DISCRETIZATION_METHODS,
-                                  pw_const_input_discretization,
-                                  forward_euler_discretization)
+                                   pw_const_input_discretization,
+                                   forward_euler_discretization)
 
 from platoon_gym.dyn.linear_accel import LinearAccel
 from platoon_gym.dyn.linear_vel import LinearVel
+
 
 def test_discretization_methods():
     A = np.array([[0, 1], 

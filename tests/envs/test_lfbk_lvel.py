@@ -1,3 +1,6 @@
+"""Test the platoon environment with linear feedback controller and linear 
+feedback controller."""
+
 import gymnasium as gym
 import numpy as np
 import sys
@@ -21,17 +24,21 @@ def test_platoon_env_vel_dyn_lfbk_ctrl():
         k = np.array([[1, 2]])
     elif dyn.p == 3:
         k = np.array([[1, 2, 1]])
+    else:
+        exit('Unsupported output dimension: {}'.format(dyn.p))
     ctrl = LinearFeedback(k)
 
     # set up platoon env
     if sys.platform.startswith('linux'):
-        plot_size = 6
+        plot_size = (6, 4)
         dpi = 100
-        subplots_adjust = [.12, .08, .88, .92, .35, .1]
+        subplots_adjust = [.08, .13, .88, .85, .25, .3]
     elif sys.platform == 'darwin':
-        plot_size = 6
+        plot_size = (6, 4)
         dpi = 50
-        subplots_adjust = [.12, .08, .88, .92, .35, .1]
+        subplots_adjust = [.08, .13, .88, .85, .25, .3]
+    else:
+        exit('Unsupported OS found: {}'.format(sys.platform))
     d_des = 5.0
     env_args = {
         'headway': 'constant distance',
@@ -60,12 +67,15 @@ def test_platoon_env_vel_dyn_lfbk_ctrl():
         action.append(ctrl.control(o) + vehs[i].state[1])
 
     while True:
-        obs, reward, terminated, truncated, info = env.step(action=action)
-        action = []
-        for i, o in enumerate(obs):
-            a = ctrls[i].control(o)
-            action.append(ctrls[i].control(o) + vehs[i].state[1])
-        env.render()
+        try:
+            obs, reward, terminated, truncated, info = env.step(action=action)
+            action = []
+            for i, o in enumerate(obs):
+                action.append(ctrls[i].control(o) + vehs[i].state[1])
+            env.render()
+        except KeyboardInterrupt:
+            env.close()
+            break
 
 
 if __name__ == '__main__':

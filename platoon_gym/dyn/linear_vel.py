@@ -2,20 +2,20 @@ import numpy as np
 
 from platoon_gym.dyn.dynamics_base import DynamicsBase
 from platoon_gym.dyn.utils import (DISCRETIZATION_METHODS,
-                                  forward_euler_discretization,
-                                  pw_const_input_discretization)
+                                   forward_euler_discretization,
+                                   pw_const_input_discretization)
 
 
 class LinearVel(DynamicsBase):
     """
     Simplest discrete-time velocity-based linear model for longitudinal vehicle 
     dynamics with a time delay. In this model, the state and output are given 
-    by (position, velocity) and the input is the desired velocity.
+    by (position, velocity) and the input is the desired velocity. Has the same 
+    attributes as DynamicsBase, plus the following:
 
-    :param dt: discrete timestep
-    :param x_lims: shape (n, 2), minimum and maximum for each state
-    :param u_lims: shape (m, 2), minimum and maximum for each input
-    :param tau: the time delay [s]
+    Attributes:
+        tau: float, time delay
+        discretization_method: str, discretization method to use
     """
     def __init__(self, 
                  dt: float, 
@@ -23,6 +23,16 @@ class LinearVel(DynamicsBase):
                  u_lims: np.ndarray, 
                  tau: float,
                  discretization_method = 'forward euler'):
+        """
+        Initializes the class.
+
+        Parameters:
+            dt: float, discrete timestep
+            x_lims: np.ndarray, shape (n, 2), state limits
+            u_lims: np.ndarray, shape (m, 2), control limits
+            tau: float, time delay
+            discretization_method: str, discretization method to use
+        """
         super().__init__(dt, x_lims, u_lims)
 
         assert discretization_method in DISCRETIZATION_METHODS,\
@@ -50,22 +60,7 @@ class LinearVel(DynamicsBase):
         assert u_lims.shape == (self.m, 2)
 
     def forward(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
-        """
-        Forward dynamics functon. Returns the state at the next timestep when 
-        starting at a current state and applying some input.
-
-        :param x: shape (n,), current state
-        :param u: shape (m,), input
-        :return: state of the vehicle at the next timestep
-        """
         return self.Ad @ x + self.Bd @ u
     
     def sense(self, x: np.ndarray) -> np.ndarray:
-        """
-        Sensing function. Returns an some function of the state that one may 
-        have access to due to some sensor.
-
-        :param x: shape (n,), current state
-        :return: shape (p,), sensor observation
-        """
         return self.C @ x

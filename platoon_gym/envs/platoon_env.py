@@ -16,6 +16,15 @@ from platoon_gym.veh.vehicle import Vehicle
 
 
 class PlatoonEnv(gym.Env):
+    """Platoon environment.
+
+    The main platooning gym environment. Visualization is done using pygame. 
+    Users pass in a list of vehicles and environment arguments. The environment
+    arguments contain information about plotting and platoon attributes.
+
+    Attributes:
+        vehicles: list[Vehicle], the list of vehicles in the platoon
+    """
     metadata = {'render_modes': ['plot'], 'render_fps': 10}
 
     def __init__(self, 
@@ -23,6 +32,14 @@ class PlatoonEnv(gym.Env):
                  env_args: dict,
                  seed: int = 4, 
                  render_mode: Optional[str] = None):
+        """Initializes the platoon environment.
+
+        Args:
+            vehicles: list[Vehicle], the list of vehicles in the platoon
+            env_args: dict, environment arguments
+            seed: int, random seed
+            render_mode: str, the rendering mode
+        """
         super().__init__()
         assert env_args['headway'] in HEADWAY_OPTIONS
         assert env_args['topology'] in TOPOLOGY_OPTIONS
@@ -132,15 +149,15 @@ class PlatoonEnv(gym.Env):
 
         self.fig, self.ax = plt.subplots(
             nrows=2, ncols=2, sharex='col', 
-            figsize=(self.plot_size, self.plot_size),
+            figsize=self.plot_size,
             dpi=self.env_args['render dpi']
         )
         self.fig.subplots_adjust(*self.env_args['subplots adjust'])
         self.fig.suptitle("Platoon dynamics")
-        self.ax[0, 0].set_ylabel("position error [m]")
-        self.ax[0, 1].set_ylabel("velocity error [m/s]")
-        self.ax[1, 0].set_ylabel("position [m]")
-        self.ax[1, 1].set_ylabel("velocity [m/s]")
+        self.ax[0, 0].set_title("position error [m]")
+        self.ax[0, 1].set_title("velocity error [m/s]")
+        self.ax[1, 0].set_title("position [m]")
+        self.ax[1, 1].set_title("velocity [m/s]")
         self.ax[1, 0].set_xlabel("time [s]")
         self.ax[1, 1].set_xlabel("time [s]")
         for i in range(len(self.vehicles)):
@@ -149,18 +166,17 @@ class PlatoonEnv(gym.Env):
                                 color=f"C{i}", label=f"{i}")
             self.velocity_err_lines[i] = \
                 self.ax[0, 1].plot(self.time_history, self.err_history[i][1, :], 
-                                color=f"C{i}", label=f"{i}")
+                                color=f"C{i}")
             self.position_lines[i] = \
                 self.ax[1, 0].plot(self.time_history, self.state_history[i][0, :], 
-                                color=f"C{i}", label=f"{i}")
+                                color=f"C{i}")
             self.velocity_lines[i] = \
                 self.ax[1, 1].plot(self.time_history, self.state_history[i][1, :],
-                                   color=f"C{i}", label=f"{i}")
-        self.ax[0, 1].legend(bbox_to_anchor=(1.0, 0.5), loc='center left')
-        self.ax[1, 1].legend(bbox_to_anchor=(1.0, 0.5), loc='center left')
+                                   color=f"C{i}")
+        self.fig.legend(loc='center right')
         for a in self.ax.flatten():
             a.grid()
-            a.set_xlim([self.time_history[0], self.time_history[-1] + 1])
+        self._set_ax_lims()
 
         self.canvas = agg.FigureCanvasAgg(self.fig)
         self.canvas.draw()
@@ -168,7 +184,7 @@ class PlatoonEnv(gym.Env):
         self.raw_data = self.renderer.buffer_rgba()
 
         pygame.init()
-        self.window = pygame.display.set_mode(self.raw_data.shape[:2])
+        self.window = pygame.display.set_mode(self.raw_data.shape[:2][::-1])
         self.screen = pygame.display.get_surface()
         self.canvas_size = self.canvas.get_width_height()
         self.surf = pygame.image.frombuffer(self.raw_data, 
@@ -182,7 +198,6 @@ class PlatoonEnv(gym.Env):
             pygame.init()
             pygame.display.set_mode(self.raw_data.shape[:2])
 
-        # TODO: update lines in plot
         for i in range(len(self.vehicles)):
             self.position_err_lines[i] = self.position_err_lines[i].pop(0)
             self.position_err_lines[i].remove()
@@ -193,22 +208,19 @@ class PlatoonEnv(gym.Env):
             self.velocity_err_lines[i].remove()
             self.velocity_err_lines[i] = \
                 self.ax[0, 1].plot(self.time_history, self.err_history[i][1, :], 
-                                   color=f"C{i}", label=f"{i}")
+                                   color=f"C{i}")
             self.position_lines[i] = self.position_lines[i].pop(0)
             self.position_lines[i].remove()
             self.position_lines[i] = \
                 self.ax[1, 0].plot(self.time_history, 
-                                   self.state_history[i][0, :], color=f"C{i}",
-                                   label=f"{i}")
+                                   self.state_history[i][0, :], color=f"C{i}")
             self.velocity_lines[i] = self.velocity_lines[i].pop(0)
             self.velocity_lines[i].remove()
             self.velocity_lines[i] = \
                 self.ax[1, 1].plot(self.time_history,
-                                   self.state_history[i][1, :], color=f"C{i}",
-                                   label=f"{i}")
+                                   self.state_history[i][1, :], color=f"C{i}")
         
-        for a in self.ax.flatten():
-            a.set_xlim([self.time_history[0], self.time_history[-1] + 1])
+        self._set_ax_lims()
 
         self.canvas.draw()
         self.renderer = self.canvas.get_renderer()
@@ -219,6 +231,31 @@ class PlatoonEnv(gym.Env):
         pygame.display.flip()
 
         self.clock.tick(self.metadata['render_fps'])
+
+    def _set_ax_lims(self):
+        for a in self.ax.flatten():
+            a.set_xlim([self.time_history[0], self.time_history[-1] + 1])
+
+        pos_err_lims = (min([self.err_history[i][0, :].min() 
+                             for i in range(len(self.vehicles))]) - 1,
+                        max([self.err_history[i][0, :].max()
+                             for i in range(len(self.vehicles))]) + 1)
+        vel_err_lims = (min([self.err_history[i][1, :].min() 
+                             for i in range(len(self.vehicles))]) - 1,
+                        max([self.err_history[i][1, :].max()
+                             for i in range(len(self.vehicles))]) + 1)
+        pos_lims = (min([self.state_history[i][0, :].min()
+                         for i in range(len(self.vehicles))]) - 1,
+                    max([self.state_history[i][0, :].max()
+                         for i in range(len(self.vehicles))]) + 1)
+        vel_lims = (min([self.state_history[i][1, :].min()
+                         for i in range(len(self.vehicles))]) - 1,
+                    max([self.state_history[i][1, :].max()
+                         for i in range(len(self.vehicles))]) + 1)
+        self.ax[0, 0].set_ylim(pos_err_lims)
+        self.ax[0, 1].set_ylim(vel_err_lims)
+        self.ax[1, 0].set_ylim(pos_lims)
+        self.ax[1, 1].set_ylim(vel_lims)
 
     def close(self):
         pass

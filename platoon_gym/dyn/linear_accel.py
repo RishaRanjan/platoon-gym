@@ -2,8 +2,8 @@ import numpy as np
 
 from platoon_gym.dyn.dynamics_base import DynamicsBase
 from platoon_gym.dyn.utils import (DISCRETIZATION_METHODS,
-                                  forward_euler_discretization,
-                                  pw_const_input_discretization)
+                                   forward_euler_discretization,
+                                   pw_const_input_discretization)
 
 
 class LinearAccel(DynamicsBase):
@@ -12,13 +12,13 @@ class LinearAccel(DynamicsBase):
     vehicle dynamics with a time delay. In this model, the state is given by 
     (position, velocity, acceleration) and the ouput is given either by the 
     full state or just (position, velocity) depending on the boolean 'full_obs'.
-    The input is the desired acceleration.
+    The input is the desired acceleration. Has the same attributes as 
+    DynamicsBase, plus the following:
 
-    :param dt: discrete timestep
-    :param x_lims: shape (n, 2), minimum and maximum for each state
-    :param u_lims: shape (m, 2), minimum and maximum for each input
-    :param tau: the time delay [s]
-    :param full_obs: whether or not we have access to all states
+    Attributes:
+        tau: float, time delay
+        full_obs: bool, whether the output is the full state or partial
+        discretization_method: str, discretization method to use
     """
     def __init__(self, 
                  dt: float, 
@@ -61,22 +61,7 @@ class LinearAccel(DynamicsBase):
         assert u_lims.shape == (self.m, 2)
 
     def forward(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
-        """
-        Forward dynamics functon. Returns the state at the next timestep when 
-        starting at a current state and applying some input.
-
-        :param x: shape (n,), current state
-        :param u: shape (m,), input
-        :return: state of the vehicle at the next timestep
-        """
         return self.Ad @ x + self.Bd @ u
     
     def sense(self, x: np.ndarray) -> np.ndarray:
-        """
-        Sensing function. Returns an some function of the state that one may 
-        have access to due to some sensor.
-
-        :param x: shape (n,), current state
-        :return: shape (p,), sensor observation
-        """
         return self.C @ x

@@ -12,12 +12,15 @@ class VirtualLeader:
     Attributes:
        state: np.ndarray, state (p, v, a) of the virtual leader
     """
-    def __init__(self, 
-                 trajectory_type: str, 
-                 trajectory_args: dict,
-                 position: float = 0.,
-                 velocity: float = 0.,
-                 acceleration: float = 0.):
+
+    def __init__(
+        self,
+        trajectory_type: str,
+        trajectory_args: dict,
+        position: float = 0.0,
+        velocity: float = 0.0,
+        acceleration: float = 0.0,
+    ):
         """
         Initialize the virtual leader with its trajectory type and initial state.
         """

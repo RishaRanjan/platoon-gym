@@ -16,8 +16,16 @@ class LinearMPC(ControllerBase):
     :param Qf: shape (n, n), terminal state cost matrix
     :param H: int, prediction horizon
     """
-    def __init__(self, A: np.ndarray, B: np.ndarray, C: np.ndarray, 
-                       Q: np.ndarray, R: np.ndarray, Qf: np.ndarray):
+
+    def __init__(
+        self,
+        A: np.ndarray,
+        B: np.ndarray,
+        C: np.ndarray,
+        Q: np.ndarray,
+        R: np.ndarray,
+        Qf: np.ndarray,
+    ):
         pass
 
     def control(self):

@@ -4,7 +4,7 @@ import numpy as np
 
 class DynamicsBase(ABC):
     """
-    Base class for any dynamics model. All dynamics models should inherit from 
+    Base class for any dynamics model. All dynamics models should inherit from
     this class.
 
     Attributes:
@@ -15,9 +15,10 @@ class DynamicsBase(ABC):
         m: int, input dimension
         p: int, sensor dimension
     """
+
     def __init__(self, dt: float, x_lims: np.ndarray, u_lims: np.ndarray):
         """
-        Base class initialization. All derived classes will have these 
+        Base class initialization. All derived classes will have these
         parameters.
 
         Parameters:
@@ -28,14 +29,14 @@ class DynamicsBase(ABC):
         self.dt = dt
         self.x_lims = x_lims
         self.u_lims = u_lims
-        self.n = None
-        self.m = None
-        self.p = None
-    
+        self.n = 0
+        self.m = 0
+        self.p = 0
+
     @abstractmethod
     def forward(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
         """
-        Forward dynamics functon. Returns the state at the next timestep when 
+        Forward dynamics functon. Returns the state at the next timestep when
         starting at a current state and applying some input.
 
         Args:
@@ -50,7 +51,7 @@ class DynamicsBase(ABC):
     @abstractmethod
     def sense(self, x: np.ndarray) -> np.ndarray:
         """
-        Sensing function. Returns some function of the state that one may have 
+        Sensing function. Returns some function of the state that one may have
         access to due to some sensor.
 
         Args:
@@ -60,11 +61,11 @@ class DynamicsBase(ABC):
             np.ndarray, shape (p,): sensor observation
         """
         pass
-    
+
     def clip_input(self, u: np.ndarray) -> np.ndarray:
         """
         Clips inputs to lie in u_lims.
-        
+
         Args:
             u: shape (m,), desired input
 

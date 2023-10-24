@@ -13,6 +13,7 @@ from gymnasium import spaces
 
 from platoon_gym.envs.utils import HEADWAY_OPTIONS, TOPOLOGY_OPTIONS
 from platoon_gym.veh.vehicle import Vehicle
+from platoon_gym.veh.virtual_leader import VirtualLeader
 
 
 class PlatoonEnv(gym.Env):
@@ -24,6 +25,7 @@ class PlatoonEnv(gym.Env):
 
     Attributes:
         vehicles: list[Vehicle], the list of vehicles in the platoon
+        virtual_leader: VirtualLeader, the virtual leader
     """
 
     metadata = {"render_modes": ["plot"], "render_fps": 10}
@@ -31,6 +33,7 @@ class PlatoonEnv(gym.Env):
     def __init__(
         self,
         vehicles: List[Vehicle],
+        virtual_leader: VirtualLeader,
         env_args: dict,
         seed: int = 4,
         render_mode: Optional[str] = None,
@@ -59,6 +62,7 @@ class PlatoonEnv(gym.Env):
         self.time_history = np.array([0.0])
 
         self.vehicles = vehicles
+        self.virtual_leader = virtual_leader
 
         self.observation_space = spaces.Tuple(
             [
@@ -97,6 +101,8 @@ class PlatoonEnv(gym.Env):
                     error = np.array([position_error, velocity_error])
                 self.err_history.append(error.reshape(-1, 1))
                 self.state_history.append(vehicles[i].state.reshape(-1, 1))
+        else:
+            raise NotImplementedError
 
         # rendering stuff
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -109,7 +115,12 @@ class PlatoonEnv(gym.Env):
         self.errors = []
         for i in range(len(self.vehicles)):
             if i == 0:
-                error = np.array([0.0, 0.0])
+                error = np.array(
+                    [
+                        self.vehicles[i].output[0] - self.virtual_leader.state[0],
+                        self.vehicles[i].output[1] - self.virtual_leader.state[1],
+                    ]
+                )
             else:
                 position_error = (
                     self.vehicles[i].output[0]
@@ -133,7 +144,10 @@ class PlatoonEnv(gym.Env):
         return tuple(self.errors)
 
     def _get_info(self):
-        return {}
+        return {
+            "virtual leader plan": self.virtual_leader.plan,
+            "vehicle state plans": [v.state_plan for v in self.vehicles],
+        }
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -146,6 +160,7 @@ class PlatoonEnv(gym.Env):
             assert a.shape == (self.vehicles[i].m,)
         for i, v in enumerate(self.vehicles):
             v.step(action[i])
+        self.virtual_leader.step()
         self.time += self.dt
         obs = self._get_obs()
         reward = 0.0

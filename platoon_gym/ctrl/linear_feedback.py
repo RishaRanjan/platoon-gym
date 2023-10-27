@@ -6,8 +6,8 @@ from platoon_gym.ctrl.controller_base import ControllerBase
 
 class LinearFeedback(ControllerBase):
     """
-    Linear feedback controller. Uses sum of positive gains multiplied by error
-    signals to determine control action.
+    Linear feedback controller. Uses negative sum of positive gains multiplied
+    by error signals to determine control action.
 
     Attributes:
         k: shape (m, n), n is state (or error vector) size, m is input size

@@ -57,6 +57,7 @@ class PlatoonEnv(gym.Env):
         self.headway = env_args["headway"]
 
         self.n_plot = env_args["plot history length"]
+        self.obs_history = []
         self.err_history = []
         self.state_history = []
         self.time_history = np.array([0.0])
@@ -67,9 +68,9 @@ class PlatoonEnv(gym.Env):
         self.observation_space = spaces.Tuple(
             [
                 spaces.Box(
-                    low=v.dyn.x_lims[: v.dyn.p, 0],
-                    high=v.dyn.x_lims[: v.dyn.p, 1],
-                    shape=(v.dyn.p,),
+                    low=v.dyn.x_lims[:2, 0],
+                    high=v.dyn.x_lims[:2, 1],
+                    shape=(2,),
                     dtype=np.float64,
                 )
                 for v in vehicles
@@ -87,18 +88,21 @@ class PlatoonEnv(gym.Env):
             ]
         )
 
-        # TODO: add leader reference trajectory
         if env_args["headway"] == "constant distance":
             self.d_des = env_args["desired distance"]
             for i in range(len(vehicles)):
                 if i == 0:
+                    obs = np.array([0.0, 0.0])
                     error = np.array([0.0, 0.0])
                 else:
-                    position_error = (
-                        vehicles[i].output[0] - vehicles[i - 1].output[0] + self.d_des
+                    distance = (
+                        vehicles[i-1].output[0] - vehicles[i].output[0]
                     )
-                    velocity_error = vehicles[i].output[1] - vehicles[i - 1].output[1]
+                    position_error = distance - self.d_des
+                    velocity_error = vehicles[i-1].output[1] - vehicles[i].output[1]
+                    obs = np.array([distance, velocity_error])
                     error = np.array([position_error, velocity_error])
+                self.obs_history.append(obs.reshape(-1, 1))
                 self.err_history.append(error.reshape(-1, 1))
                 self.state_history.append(vehicles[i].state.reshape(-1, 1))
         else:
@@ -111,29 +115,32 @@ class PlatoonEnv(gym.Env):
             self._init_render()
 
     def _get_obs(self):
-        # TODO: add leader reference trajectory
-        self.errors = []
+        observations = []
         for i in range(len(self.vehicles)):
             if i == 0:
-                error = np.array(
+                obs = np.array(
                     [
-                        self.vehicles[i].output[0] - self.virtual_leader.state[0],
-                        self.vehicles[i].output[1] - self.virtual_leader.state[1],
+                        self.virtual_leader.state[0] - self.vehicles[i].output[0],
+                        self.virtual_leader.state[1] - self.vehicles[i].output[1]
                     ]
                 )
+                error = obs
             else:
-                position_error = (
-                    self.vehicles[i].output[0]
-                    - self.vehicles[i - 1].output[0]
-                    + self.d_des
+                distance = (
+                    self.vehicles[i-1].output[0] - self.vehicles[i].output[0]
                 )
+                position_error = distance - self.d_des
                 velocity_error = (
-                    self.vehicles[i].output[1] - self.vehicles[i - 1].output[1]
+                    self.vehicles[i-1].output[1] - self.vehicles[i].output[1]
                 )
+                obs = np.array([distance, velocity_error])
                 error = np.array([position_error, velocity_error])
-            self.errors.append(error)
+            observations.append(obs)
+            self.obs_history[i] = np.c_[self.obs_history[i], obs]
             self.err_history[i] = np.c_[self.err_history[i], error]
             self.state_history[i] = np.c_[self.state_history[i], self.vehicles[i].state]
+            if self.obs_history[i].shape[1] > self.n_plot:
+                self.obs_history[i] = self.obs_history[i][:, 1:]
             if self.err_history[i].shape[1] > self.n_plot:
                 self.err_history[i] = self.err_history[i][:, 1:]
             if self.state_history[i].shape[1] > self.n_plot:
@@ -141,12 +148,12 @@ class PlatoonEnv(gym.Env):
         self.time_history = np.concatenate((self.time_history, np.array([self.time])))
         if len(self.time_history) > self.n_plot:
             self.time_history = self.time_history[1:]
-        return tuple(self.errors)
+        return tuple(observations)
 
     def _get_info(self):
         return {
             "virtual leader plan": self.virtual_leader.plan,
-            "vehicle state plans": [v.state_plan for v in self.vehicles],
+            "vehicle states": [v.state for v in self.vehicles],
         }
 
     def reset(self, seed=None, options=None):
@@ -176,7 +183,7 @@ class PlatoonEnv(gym.Env):
     def _init_render(self):
         self.plot_size = self.env_args["plot size"]
 
-        self.position_err_lines = []
+        self.distance_lines = []
         self.velocity_err_lines = []
         self.position_lines = []
         self.velocity_lines = []
@@ -190,14 +197,14 @@ class PlatoonEnv(gym.Env):
         )
         self.fig.subplots_adjust(*self.env_args["subplots adjust"])
         self.fig.suptitle("Platoon dynamics")
-        self.ax[0, 0].set_title("position error [m]")
-        self.ax[0, 1].set_title("velocity error [m/s]")
+        self.ax[0, 0].set_title("spacing error [m]")
+        self.ax[0, 1].set_title("velocity difference [m/s]")
         self.ax[1, 0].set_title("position [m]")
         self.ax[1, 1].set_title("velocity [m/s]")
         self.ax[1, 0].set_xlabel("time [s]")
         self.ax[1, 1].set_xlabel("time [s]")
         for i in range(len(self.vehicles)):
-            self.position_err_lines.append(
+            self.distance_lines.append(
                 self.ax[0, 0].plot(
                     self.time_history,
                     self.err_history[i][0, :],
@@ -245,9 +252,9 @@ class PlatoonEnv(gym.Env):
             pygame.display.set_mode(self.raw_data.shape[:2])
 
         for i in range(len(self.vehicles)):
-            self.position_err_lines[i] = self.position_err_lines[i].pop(0)
-            self.position_err_lines[i].remove()
-            self.position_err_lines[i] = self.ax[0, 0].plot(
+            self.distance_lines[i] = self.distance_lines[i].pop(0)
+            self.distance_lines[i].remove()
+            self.distance_lines[i] = self.ax[0, 0].plot(
                 self.time_history,
                 self.err_history[i][0, :],
                 color=f"C{i}",

@@ -28,4 +28,4 @@ class LinearFeedback(ControllerBase):
             np.ndarray, shape (m,): control input
             dict: empty
         """
-        return -self.k @ e, {}
+        return self.k @ e, {}

@@ -4,6 +4,7 @@ from platoon_gym.ctrl.mpc import LinearMPC
 
 
 def test_mpc():
+    print()
     A = np.array([[1, 1], [0, 1]])
     B = np.array([[0], [1]])
     C = np.eye(2)
@@ -13,12 +14,17 @@ def test_mpc():
     Cf = np.eye(2)
     Cx = np.block([[np.eye(2)], [-np.eye(2)]])
     Cu = np.block([[np.eye(1)], [-np.eye(1)]])
-    dx = np.array([np.inf, np.inf, np.inf, np.inf])
-    du = np.array([np.inf, np.inf])
-    H = 3
+    dx = np.array([np.inf, 5, np.inf, 5])
+    du = np.array([1, 1])
+    H = 25
+    initial_state = np.array([100.0, 0.0])
+
     mpc = LinearMPC(A, B, C, Q, R, Qf, Cx, Cu, dx, du, H, Cf=Cf)
-    u_opt, _ = mpc.control(np.array([0, 0]))
-    assert np.allclose(u_opt, np.array([0]))
+    action, info = mpc.control(initial_state)
+    assert info["status"] == "optimal", f"MPC returned {info['status']}"
+    assert action.item() < 0
+
     mpc = LinearMPC(A, B, C, Q, R, Qf, Cx, Cu, dx, du, H)
-    u_opt, _ = mpc.control(np.array([0, 0]))
-    assert np.allclose(u_opt, np.array([0]))
+    action, info = mpc.control(initial_state)
+    assert info["status"] == "optimal", f"MPC returned {info['status']}"
+    assert action.item() < 0

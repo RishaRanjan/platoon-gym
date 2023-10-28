@@ -70,7 +70,7 @@ class LinearMPC(ControllerBase):
 
         C_bar = block_diag(*([Cu, Cx] * H))
         self.C_bar = sp.sparse.csr_matrix(C_bar)
-        self.d_bar = np.concatenate((du, dx)).repeat(H)
+        self.d_bar = np.tile(np.concatenate((du, dx)), H)
         assert self.C_bar.shape[0] == self.d_bar.shape[0]
 
     def control(
@@ -114,12 +114,12 @@ class LinearMPC(ControllerBase):
                 x_opt[:, k + 1] = y.value[i : i + n]
                 u_opt[:, k + 1] = y.value[i + n : i + n + m]
             x_opt[:, -1] = y.value[-n:]
-        info = {"status": prob.status, "planned state": x_opt, "planned input": u_opt}
+        info = {"status": prob.status, "planned states": x_opt, "planned inputs": u_opt}
         return np.atleast_1d(u_opt[:, 0]), info
 
     def mpc_problem(self, x0, z_ref, u_ref) -> Tuple[cp.Problem, cp.Variable]:
         """
-        Creates the CVXPY problem and variable for the MPC problem.
+        Creates the CVXPY problem and optimization variable for the MPC problem.
         """
         n, m, p, H = self.n, self.m, self.p, self.H
         y = cp.Variable(self.opt_var_dim)
@@ -133,6 +133,7 @@ class LinearMPC(ControllerBase):
             self.q[i : i + p] = self.C.T @ self.Q @ z_ref[:, k + 1]
             self.q[i + p : i + p + m] = self.R @ u_ref[:, k + 1]
         self.q[-p:] = self.C.T @ self.Qf @ z_ref[:, -1]
+        self.q *= -2
 
         cost = cp.quad_form(y, self.P) + self.q @ y
         constraints = [self.A_bar @ y == self.b_bar, self.C_bar @ y <= self.d_bar]

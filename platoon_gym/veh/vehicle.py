@@ -3,7 +3,7 @@
 This class contains all vehicle information needed from the platooning 
 environment."""
 
-from typing import Optional
+from typing import Optional, Tuple
 import numpy as np
 
 from platoon_gym.dyn.dynamics_base import DynamicsBase
@@ -24,7 +24,6 @@ class Vehicle:
     def __init__(
         self,
         dyn: DynamicsBase,
-        vehicle_args: dict,
         position: float = 0.0,
         velocity: float = 0.0,
         acceleration: Optional[float] = None,
@@ -33,7 +32,6 @@ class Vehicle:
         Initialize the vehicle with its dynamics model and starting state.
         """
         self.dyn = dyn
-        self.H = vehicle_args["horizon"]
         self.dt = self.dyn.dt
         self.n, self.m, self.p = dyn.n, dyn.m, dyn.p
         if acceleration is not None:
@@ -41,11 +39,10 @@ class Vehicle:
         else:
             self.state = np.array([position, velocity])
         self.output = np.array([position, velocity])
-        self.state_plan = np.empty((self.p, self.H + 1))
-        self.control_plan = np.empty((self.m, self.H))
 
     def step(self, control: np.ndarray):
-        """Step the vehicle dynamics forward one time step based on the
+        """
+        Step the vehicle dynamics forward one time step based on the
         control input given by control.
 
         Args:

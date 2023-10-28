@@ -80,7 +80,7 @@ class LinearMPC(ControllerBase):
         u_ref: Optional[np.ndarray] = None,
     ) -> Tuple[np.ndarray, dict]:
         """
-        Returns a control input based on an MPC policy. Also returns a dict 
+        Returns a control input based on an MPC policy. Also returns a dict
         with the planned trajectory and planned inputs.
 
         Args:

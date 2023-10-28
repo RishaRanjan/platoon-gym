@@ -20,7 +20,7 @@ class DistributedMPC(ControllerBase):
         Q: np.ndarray,
         Qn: np.ndarray,
         R: np.ndarray,
-        H: int
+        H: int,
     ):
         """
         Args:
@@ -42,9 +42,9 @@ class DistributedMPC(ControllerBase):
         xa: np.ndarray,
         xn: List[np.ndarray],
         u_ref: Optional[np.ndarray] = None,
-        ) -> Tuple[np.ndarray, dict]:
+    ) -> Tuple[np.ndarray, dict]:
         """
-        Returns a control input based on a distributed MPC policy. Also returns 
+        Returns a control input based on a distributed MPC policy. Also returns
         a dict with the planned trajectory and planned inputs.
 
         Args:
@@ -64,7 +64,7 @@ class DistributedMPC(ControllerBase):
         Creates the CVXPY problem and optimization variable for the MPC problem.
         """
         n, m, H = self.n, self.m, self.H
-        z = cp.Variable(H*(m+n))
-        cost = 0.
+        z = cp.Variable(H * (m + n))
+        cost = 0.0
         constraints = []
         return cp.Problem(cp.Minimize(cost), constraints), z

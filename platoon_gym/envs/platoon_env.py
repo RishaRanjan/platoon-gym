@@ -120,7 +120,8 @@ class PlatoonEnv(gym.Env):
             if i == 0:
                 obs = np.array(
                     [
-                        self.virtual_leader.state[0] - self.vehicles[i].output[0],
+                        # self.virtual_leader.state[0] - self.vehicles[i].output[0],
+                        0,
                         self.virtual_leader.state[1] - self.vehicles[i].output[1]
                     ]
                 )

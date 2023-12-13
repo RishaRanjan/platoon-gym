@@ -40,12 +40,21 @@ class VirtualLeader:
         self.n = self.state.shape[0]
         self.plan = np.empty((self.n, self.H + 1))
         self.time = 0.0
+        self.prev_time = 0.0
         self.time_forecast = np.arange(self.H + 1) * self.dt
+        if (self.traj_type == 'random velocity'):
+            self.wait_time = 10
         self.init_traj()
 
     def init_traj(self):
         """Initialize the trajectory."""
         if self.traj_type == "constant velocity":
+            assert self.state[0] == 0.0, "Initial position must be 0.0"
+            assert self.state[2] == 0.0, "Initial acceleration must be 0.0"
+            self.plan[0, :] = self.state[0] + self.state[1] * self.time_forecast
+            self.plan[1, :] = self.state[1]
+            self.plan[2, :] = 0.0
+        elif self.traj_type == "random velocity":
             assert self.state[0] == 0.0, "Initial position must be 0.0"
             assert self.state[2] == 0.0, "Initial acceleration must be 0.0"
             self.plan[0, :] = self.state[0] + self.state[1] * self.time_forecast
@@ -62,6 +71,25 @@ class VirtualLeader:
             self.time_forecast += self.dt
             self.plan[:, :-1] = self.plan[:, 1:]
             self.plan[0, -1] = self.plan[0, -2] + self.dt * self.plan[1, -2]
+            self.plan[1, -1] = self.plan[1, -2]
+            self.plan[2, -1] = 0.0
+        elif self.traj_type == "random velocity":
+            if (self.time - self.prev_time >= self.wait_time):
+                self.prev_time = self.time
+                self.state[1] = np.random.random() * 10 + 15
+                print('changed velocity: ', self.state[1])
+                self.plan[0, :] = self.state[0] + self.state[1] * self.time_forecast
+                self.plan[1, :] = self.state[1]
+                self.plan[2, :] = 0.0
+
+                self.state[0] += self.state[1] * self.dt
+                self.time += self.dt
+
+            self.state[0] += self.state[1] * self.dt
+            self.time += self.dt
+            
+            self.plan[:, :-1] = self.plan[:, 1:]
+            self.plan[0, -1] = self.plan[0, -2] + self.dt * self.state[1]
             self.plan[1, -1] = self.plan[1, -2]
             self.plan[2, -1] = 0.0
         else:

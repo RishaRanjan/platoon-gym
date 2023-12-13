@@ -4,4 +4,5 @@ VL_TRAJECTORY_TYPES = [
     "random stagger",
     "random sinusoid",
     "random",
+    "random velocity",
 ]

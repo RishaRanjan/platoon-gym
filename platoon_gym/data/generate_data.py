@@ -14,7 +14,7 @@ from platoon_gym.veh.virtual_leader import VirtualLeader
 from platoon_gym.veh.utils import VL_TRAJECTORY_TYPES
 
 
-def test_platoon_env_accel_dyn_mpc_ctrl():
+def generate_data():
     # set up dynamics
     tau = 0.5
     dt = 0.1
@@ -101,7 +101,7 @@ def test_platoon_env_accel_dyn_mpc_ctrl():
     actions = []
     history = [[] for _ in range(n_vehicles)]
     # number of timesteps recorded in the history
-    hist_len = 10
+    hist_len = 20
     data = [[] for _ in range(n_vehicles)]
     timestep = 0
     for i, o in enumerate(obs):
@@ -117,7 +117,8 @@ def test_platoon_env_accel_dyn_mpc_ctrl():
             veh_err_history = veh_err_history.T
             history[i] = veh_err_history
             new_data = np.concatenate(([timestep, veh_states[i][0], veh_states[i][1], action[0]], veh_err_history[0], veh_err_history[1]))
-            assert len(new_data) == 24
+            print(len(new_data))
+            assert len(new_data) == 44
             data[i].append(new_data)
         else:
             pred_plan = veh_state_plans[i - 1]
@@ -134,7 +135,7 @@ def test_platoon_env_accel_dyn_mpc_ctrl():
             veh_err_history = veh_err_history.T
             history[i] = veh_err_history
             new_data = np.concatenate(([timestep, veh_states[i][0], veh_states[i][1], action[0]], veh_err_history[0], veh_err_history[1]))
-            assert len(new_data) == 24
+            assert len(new_data) == 44
             data[i].append(new_data)
 
             # data[i].append([timestep, veh_states[i][0], veh_states[i][1], action[0]])
@@ -158,17 +159,17 @@ def test_platoon_env_accel_dyn_mpc_ctrl():
                         veh_states[i], vl_plan, veh_control_plans[i]
                     )
                     env_veh_err_history = env.get_wrapper_attr('err_history')[i]
-                    pos_hist = env_veh_err_history[0][-10:]
-                    vel_hist = env_veh_err_history[1][-10:]
+                    pos_hist = env_veh_err_history[0][-hist_len:]
+                    vel_hist = env_veh_err_history[1][-hist_len:]
                     if (len(pos_hist)< hist_len):
                        pos_err = pos_hist[0] 
-                       pos_hist = np.pad(pos_hist, (10-len(pos_hist), 0), 'constant', constant_values=pos_err)
+                       pos_hist = np.pad(pos_hist, (hist_len-len(pos_hist), 0), 'constant', constant_values=pos_err)
                     if (len(vel_hist)< hist_len):
                        vel_err = vel_hist[0] 
-                       vel_hist = np.pad(vel_hist, (10-len(vel_hist), 0), 'constant', constant_values=vel_err)
+                       vel_hist = np.pad(vel_hist, (hist_len-len(vel_hist), 0), 'constant', constant_values=vel_err)
                        
                     new_data = np.concatenate(([timestep, veh_states[i][0], veh_states[i][1], action[0]], pos_hist, vel_hist))
-                    assert len(new_data) == 24
+                    assert len(new_data) == 44
                     data[i].append(new_data)
                 else:
                     pred_plan = veh_state_plans[i - 1]
@@ -177,16 +178,16 @@ def test_platoon_env_accel_dyn_mpc_ctrl():
                         veh_states[i], pred_plan, veh_control_plans[i]
                     )
                     env_veh_err_history = env.get_wrapper_attr('err_history')[i]
-                    pos_hist = env_veh_err_history[0][-10:]
-                    vel_hist = env_veh_err_history[1][-10:]
+                    pos_hist = env_veh_err_history[0][-hist_len:]
+                    vel_hist = env_veh_err_history[1][-hist_len:]
                     if (len(pos_hist)< hist_len):
                        pos_err = pos_hist[0] 
-                       pos_hist = np.pad(pos_hist, (10-len(pos_hist), 0), 'constant', constant_values=pos_err)
+                       pos_hist = np.pad(pos_hist, (hist_len-len(pos_hist), 0), 'constant', constant_values=pos_err)
                     if (len(vel_hist)< hist_len):
                        vel_err = vel_hist[0] 
-                       vel_hist = np.pad(vel_hist, (10-len(vel_hist), 0), 'constant', constant_values=vel_err)
+                       vel_hist = np.pad(vel_hist, (hist_len-len(vel_hist), 0), 'constant', constant_values=vel_err)
                     new_data = np.concatenate(([timestep, veh_states[i][0], veh_states[i][1], action[0]], pos_hist, vel_hist))
-                    assert len(new_data) == 24
+                    assert len(new_data) == 44
                     data[i].append(new_data)
                 if ctrl_info["status"] != "optimal":
                     assert False, f"MPC returned {ctrl_info['status']}"
@@ -213,6 +214,6 @@ def get_project_root() -> str:
     return str(Path(__file__).parent.parent)
 
 if __name__ == "__main__":
-    test_platoon_env_accel_dyn_mpc_ctrl()
+    generate_data()
 
 

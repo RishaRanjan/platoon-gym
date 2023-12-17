@@ -13,7 +13,7 @@ testing_datasets = []
 testing_dataloaders = []
 batch_size = 64
 for i in range(10):
-    veh_data_dir = project_root+ f"/data/veh_{i}.npy"
+    veh_data_dir = project_root+ f"/data/10_history/veh_{i}.npy"
     data[i] = np.load(veh_data_dir)
     train_index = round(0.85 * len(data[i]))
     train_tensor = torch.FloatTensor(data[i][:train_index])
@@ -25,33 +25,17 @@ for i in range(10):
     training_dataloaders.append(DataLoader(train_dataset, batch_size=batch_size))
     testing_dataloaders.append(DataLoader(test_dataset, batch_size=batch_size))
 
-# device = (
-#     "cuda"
-#     if torch.cuda.is_available()
-#     else "mps"
-#     if torch.backends.mps.is_available()
-#     else "cpu"
-# )
-# print(f"Using {device} device")
-
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.flatten = nn.Flatten()
-        # layers = [nn.Linear(input_size, layer_sizes[0])]
-        # layers += [nn.ReLU(True)]
-        # for i in range(1, len(layer_sizes[1:])):
-        #     layers += [nn.Linear(layer_sizes[i-1], layer_sizes[i])] 
-        #     layers += [nn.ReLU(True)]
-        # layers += [nn.Linear(layer_sizes[-1], output_size)]
-        # self.model = nn.Sequential(*layers)
 
         self.linera_relu_stack = nn.Sequential(
             nn.Linear(22, 16),
             nn.ReLU(),
             nn.Linear(16, 16),
             nn.ReLU(),
-            nn.Linear(16, 10)
+            nn.Linear(16, 1)
         )
 
     def forward(self, x):
@@ -59,73 +43,62 @@ class Net(nn.Module):
         logits = self.linera_relu_stack(x)
         return logits
 
-# model = Net().to(device)
-# print(model)
 model = Net()
 
 loss_fn = nn.MSELoss(reduction='sum')
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+# optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 def train(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     model.train()
-    for batch, tensor in enumerate(dataloader):
+    total_loss = 0
+    for tensor in dataloader:
         x = tensor[0][:, [1,2] + list(range(4, tensor[0].size(dim=1)))]
         y = tensor[0][:, 3:4]
-        y = y.squeeze(dim=1)
-        y = y.long()
-        print(y.shape)
 
         # x, y = x.to(device), y.to(device)
 
         pred = model(x)
         pred = pred.float()
-        print('here')
         loss = loss_fn(pred, y)
-        print('here1')
+        total_loss += loss.item()
 
         loss.backward()
-        print('here2')
         optimizer.step()
-        print('here3')
         optimizer.zero_grad()
-
-        if batch % 100 == 0:
-            loss, current = loss.item(), (batch + 1) * len(x)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+    
+    avg_loss = total_loss / size
+    print(f"Train Error: \n Avg loss: {avg_loss:>8f} \n")
+    return avg_loss
 
 def test(dataloader, model, loss_fn):
     size = len(dataloader.dataset)
-    num_batches = len(dataloader)
     model.eval()
-    test_loss, correct = 0, 0
+    total_loss = 0
 
-    for i, tensor in enumerate(dataloader):
+    for tensor in dataloader:
         # send the input/labels to the GPU
-        x = tensor[0][:, 1:3]
-        y = tensor[0][:, 3:]
-        y = y.long()
-
-        # x, y = x.to(device), y.to(device)
+        x = tensor[0][:, [1,2] + list(range(4, tensor[0].size(dim=1)))]
+        y = tensor[0][:, 3:4]
 
         # forward
-        with torch.set_grad_enabled(False):
-            pred = model(x)
-            pred = pred.long()
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+        pred = model(x)
+        total_loss += loss_fn(pred, y).item()
 
-    test_loss /= num_batches
-    correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    avg_loss = total_loss / size
+    print(f"Test Error: \n Avg loss: {avg_loss:>8f} \n")
+    return avg_loss
 
 
 train_dataloader = training_dataloaders[0]
 test_dataloader = testing_dataloaders[0]
 
-epochs = 5
+epochs = 50
 for t in range(epochs):
+    train_loss = []
+    test_loss = []
     print(f"Epoch {t+1}\n-------------------------------")
-    train(train_dataloader, model, loss_fn, optimizer)
-    # test(test_dataloader, model, loss_fn)
+    train_loss.append(train(train_dataloader, model, loss_fn, optimizer))
+    test_loss.append(test(test_dataloader, model, loss_fn))
 print("Done!")
